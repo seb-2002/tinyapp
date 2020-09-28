@@ -24,8 +24,10 @@ app.get("/urls", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body); // Log the POST request body to the console
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  const newShortURL = generateRandomString();
+  urlDatabase[newShortURL] = req.body.longURL;
+  const redirectPage = `/urls/${newShortURL}`;
+  res.redirect(redirectPage);
 });
 
 app.get("/urls/new", (req, res) => {
@@ -35,9 +37,19 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[this.shortURL],
+    longURL: urlDatabase[req.params.shortURL],
   };
+  console.log(templateVars.shortURL);
   res.render("urls_show", templateVars);
+});
+
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL];
+  if (longURL) {
+    res.redirect(longURL);
+  } else {
+    res.send("404 - page not found");
+  }
 });
 
 app.listen(PORT, () => {
