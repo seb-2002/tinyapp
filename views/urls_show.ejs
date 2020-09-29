@@ -21,8 +21,27 @@
           Short URL: <a href="/u/<%= shortURL %>"><%= shortURL %></a>
         </p>
       </div>
-      <div class="card-footer text-muted"></div>
     </div>
+
+    <!-- take this styling out into a stylesheet later -->
+    <div
+      class="card text-center border-light my-1 mx-auto"
+      style="width: 18rem"
+    >
+      <form action="/urls/<%= shortURL %>" method="POST">
+        <label for="newURL" class="col-form-label-lg">EDIT: </label>
+
+        <input
+          placeholder="<%= longURL %>"
+          class="form-control"
+          name="newURL"
+          type="text"
+        />
+
+        <button type="submit" class="btn btn-primary m-2">Update</button>
+      </form>
+    </div>
+
     <!-- Bootstrap JS -->
     <script
       src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
