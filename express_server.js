@@ -19,12 +19,13 @@ const {
   generateRandomString,
   emailArray,
   emailLookup,
+  filterURLSByUserID,
 } = require("./helpers");
 
 // "DATABASES"
 const urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  b2xVn2: { longURL: "http://www.lighthouselabs.ca", userID: "userRandomID" },
+  "9sm5xK": { longURL: "http://www.google.com", userID: "user2RandomID" },
 };
 
 const users = {
@@ -53,7 +54,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
+  const longURL = urlDatabase[req.params.shortURL].longURL;
   if (longURL) {
     res.redirect(longURL);
   } else {
@@ -141,10 +142,13 @@ app.post("/logout", (req, res) => {
 // url index
 
 app.get("/urls", (req, res) => {
-  //console.log(req.cookies);
+  const user = users[req.cookies["user_id"]];
+  console.log(user);
+  const urls = filterURLSByUserID(user.id, urlDatabase);
+  console.log(urls);
   const templateVars = {
-    user: users[req.cookies["user_id"]],
-    urls: urlDatabase,
+    user,
+    urls,
   };
   templateVars.user
     ? res.render("urls_index", templateVars)
@@ -189,3 +193,9 @@ app.post("/urls/:id", (req, res) => {
   console.log("Database updated!");
   res.redirect("/urls");
 });
+
+// dev exports
+module.exports = {
+  urlDatabase,
+  users,
+};

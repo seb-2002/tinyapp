@@ -1,3 +1,5 @@
+const { urlDatabase, users } = require("./express_server");
+
 const duplicateEmail = (email, db) => {
   for (let user in db) {
     if (db[user].email === email) return true;
@@ -18,9 +20,23 @@ const emailArray = (db) => {
     console.log(db[user].email);
   }
 };
+
+const filterURLSByUserID = (userID, db) => {
+  filteredDatabase = {};
+  for (let shortURL in db) {
+    if (db[shortURL].userID === userID) {
+      filteredDatabase[shortURL] = db[shortURL];
+    }
+  }
+  return filteredDatabase;
+};
+
+//console.log(filterURLSByUserID("userRandomID", urlDatabase));
+
 module.exports = {
   duplicateEmail,
   generateRandomString,
   emailArray,
   emailLookup,
+  filterURLSByUserID,
 };
