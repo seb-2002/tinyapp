@@ -40,32 +40,30 @@ const users = {
   },
 };
 
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}!`);
+});
+
 // ROUTES
+
+// public
 
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
-app.get("/urls", (req, res) => {
-  //console.log(req.cookies);
-  const templateVars = {
-    user: users[req.cookies["user_id"]],
-    urls: urlDatabase,
-  };
-  res.render("urls_index", templateVars);
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL];
+  if (longURL) {
+    res.redirect(longURL);
+  } else {
+    res.send("404 - page not found");
+  }
 });
 
-app.post("/urls", (req, res) => {
-  const newShortURL = generateRandomString();
-  urlDatabase[newShortURL] = req.body.longURL;
-  const redirectPage = `/urls/${newShortURL}`;
-  res.redirect(redirectPage);
-});
+// login and registration
 
-app.get("/urls/new", (req, res) => {
-  res.render("urls_new", { user: users[req.cookies["user_id"]] });
-});
-
+// deal with login and register buttons on the login page
 app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.cookies["user_id"]],
@@ -75,13 +73,29 @@ app.get("/login", (req, res) => {
   res.render("login", templateVars);
 });
 
-app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = {
-    user: users[req.cookies["user_id"]],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
-  };
-  res.render("urls_show", templateVars);
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+  const id = emailLookup(email, users);
+  if (!id) {
+    res.status(403);
+    res.cookie("noEmailMatch", true);
+    res.clearCookie("invalidPassword");
+    console.log(res.statusCode);
+    res.redirect("/login");
+    // and then ....
+  } else if (users[id].password !== password) {
+    res.status(403);
+    res.clearCookie("noEmailMatch");
+    res.cookie("invalidPassword", true);
+    console.log(res.statusCode);
+    res.redirect("/login");
+    // and then ....
+  } else {
+    res.clearCookie("noEmailMatch");
+    res.clearCookie("invalidPassword");
+    res.cookie("user_id", id);
+    res.redirect("/urls");
+  }
 });
 
 app.get("/register", (req, res) => {
@@ -119,57 +133,59 @@ app.post("/register", (req, res) => {
   }
 });
 
+app.post("/logout", (req, res) => {
+  res.clearCookie("user_id");
+  res.redirect("/login");
+});
+
+// url index
+
+app.get("/urls", (req, res) => {
+  //console.log(req.cookies);
+  const templateVars = {
+    user: users[req.cookies["user_id"]],
+    urls: urlDatabase,
+  };
+  templateVars.user
+    ? res.render("urls_index", templateVars)
+    : res.redirect("/login");
+});
+
+app.post("/urls", (req, res) => {
+  const newShortURL = generateRandomString();
+  urlDatabase[newShortURL] = req.body.longURL;
+  const redirectPage = `/urls/${newShortURL}`;
+  res.redirect(redirectPage);
+});
+
 app.post("/urls/:shortURL/delete", (req, res) => {
   console.log("Delete request!");
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
 });
 
+// short URL pages
+
+app.get("/urls/new", (req, res) => {
+  const templateVars = { user: users[req.cookies["user_id"]] };
+  templateVars.user
+    ? res.render("urls_new", templateVars)
+    : res.redirect("/login");
+});
+
+app.get("/urls/:shortURL", (req, res) => {
+  const templateVars = {
+    user: users[req.cookies["user_id"]],
+    shortURL: req.params.shortURL,
+    longURL: urlDatabase[req.params.shortURL],
+  };
+  templateVars.user
+    ? res.render("urls_show", templateVars)
+    : res.redirect("/login");
+});
+
 app.post("/urls/:id", (req, res) => {
   urlDatabase[req.params.id] = req.body.newURL;
   console.log("Database updated!");
   res.redirect("/urls");
-});
-
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-  const id = emailLookup(email, users);
-  if (!id) {
-    res.status(403);
-    res.cookie("noEmailMatch", true);
-    res.clearCookie("invalidPassword");
-    console.log(res.statusCode);
-    res.redirect("/login");
-    // and then ....
-  } else if (users[id].password !== password) {
-    res.status(403);
-    res.clearCookie("noEmailMatch");
-    res.cookie("invalidPassword", true);
-    console.log(res.statusCode);
-    res.redirect("/login");
-    // and then ....
-  } else {
-    res.clearCookie("noEmailMatch");
-    res.clearCookie("invalidPassword");
-    res.cookie("user_id", id);
-    res.redirect("/urls");
-  }
-});
-
-app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
-  res.redirect("/login");
-});
-
-app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  if (longURL) {
-    res.redirect(longURL);
-  } else {
-    res.send("404 - page not found");
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
 });
