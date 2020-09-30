@@ -18,6 +18,7 @@ const {
   duplicateEmail,
   generateRandomString,
   emailArray,
+  emailLookup,
 } = require("./helpers");
 
 // "DATABASES"
@@ -63,6 +64,15 @@ app.post("/urls", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   res.render("urls_new", { user: users[req.cookies["user_id"]] });
+});
+
+app.get("/login", (req, res) => {
+  const templateVars = {
+    user: users[req.cookies["user_id"]],
+    invalidPassword: req.cookies["invalidPassword"],
+    noEmailMatch: req.cookies["noEmailMatch"],
+  };
+  res.render("login", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
@@ -121,14 +131,34 @@ app.post("/urls/:id", (req, res) => {
   res.redirect("/urls");
 });
 
-// app.post("/login", (req, res) => {
-//   res.cookie("username", req.body.username);
-//   res.redirect("/urls");
-// });
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+  const id = emailLookup(email, users);
+  if (!id) {
+    res.status(403);
+    res.cookie("noEmailMatch", true);
+    res.clearCookie("invalidPassword");
+    console.log(res.statusCode);
+    res.redirect("/login");
+    // and then ....
+  } else if (users[id].password !== password) {
+    res.status(403);
+    res.clearCookie("noEmailMatch");
+    res.cookie("invalidPassword", true);
+    console.log(res.statusCode);
+    res.redirect("/login");
+    // and then ....
+  } else {
+    res.clearCookie("noEmailMatch");
+    res.clearCookie("invalidPassword");
+    res.cookie("user_id", id);
+    res.redirect("/urls");
+  }
+});
 
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 app.get("/u/:shortURL", (req, res) => {
