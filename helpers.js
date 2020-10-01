@@ -34,6 +34,13 @@ const filterURLSByUserID = (userID, db) => {
 
 const hash = (password) => bcrypt.hashSync(password, 10);
 
+const alertFalsePassword = (password, hashedPassword) => {
+  if (bcrypt.compareSync(password, hashedPassword)) {
+    return false;
+  }
+  return true;
+};
+
 //console.log(filterURLSByUserID("userRandomID", urlDatabase));
 
 module.exports = {
@@ -43,4 +50,5 @@ module.exports = {
   emailLookup,
   filterURLSByUserID,
   hash,
+  alertFalsePassword,
 };

@@ -21,6 +21,7 @@ const {
   emailLookup,
   filterURLSByUserID,
   hash,
+  alertFalsePassword,
 } = require("./helpers");
 
 // "DATABASES"
@@ -78,6 +79,7 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const id = emailLookup(email, users);
+  console.log("id", id);
   if (!id) {
     res.status(403);
     res.cookie("noEmailMatch", true);
@@ -85,8 +87,10 @@ app.post("/login", (req, res) => {
     console.log(res.statusCode);
     res.redirect("/login");
     // and then ....
-  } else if (users[id].password !== password) {
+  } else if (alertFalsePassword(password, users[id].password)) {
     res.status(403);
+    console.log("password", password);
+    console.log("hash", users[id].password);
     res.clearCookie("noEmailMatch");
     res.cookie("invalidPassword", true);
     console.log(res.statusCode);
@@ -129,6 +133,7 @@ app.post("/register", (req, res) => {
       email,
       password: hash(password),
     };
+    console.log(JSON.stringify(users[id]));
     res.cookie("user_id", id);
     res.clearCookie("missingUsernameOrPassword");
     res.clearCookie("duplicateEmail");
