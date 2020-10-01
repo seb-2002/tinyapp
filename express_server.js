@@ -24,31 +24,17 @@ app.set("view engine", "ejs");
 const {
   duplicateEmail,
   generateRandomString,
-  emailArray,
   emailLookup,
   filterURLSByUserID,
-  hash,
   alertFalsePassword,
+  hash,
 } = require("./helpers");
 
-// "DATABASES"
-const urlDatabase = {
-  b2xVn2: { longURL: "http://www.lighthouselabs.ca", userID: "userRandomID" },
-  "9sm5xK": { longURL: "http://www.google.com", userID: "user2RandomID" },
-};
+// DATABASES
 
-const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: hash("purple-monkey-dinosaur"),
-  },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: hash("dishwasher-funk"),
-  },
-};
+const { urlDatabase, users } = require("./dbs");
+
+// LISTENER
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
