@@ -7,6 +7,8 @@ const {
   filterURLSByUserID,
   hash,
   alertFalsePassword,
+  assertURLBelongsToUser,
+  assertKey,
 } = require("../helpers");
 
 // EXAMPLE DATABASES
@@ -92,5 +94,32 @@ describe("#alertFalsePassword", () => {
         hash("purple-monkey-dinosaur")
       )
     );
+  });
+});
+
+describe("#assertURLBelongsToUser", () => {
+  it("returns true if the url belongs to the user", () => {
+    assert.isTrue(
+      assertURLBelongsToUser("b2xVn2", "userRandomID", urlDatabase)
+    );
+  });
+  it("returns false if the url belongs to a different user", () => {
+    assert.isFalse(
+      assertURLBelongsToUser("9sm5xK", "userRandomID", urlDatabase)
+    );
+  });
+  it("returns false if the url is not contained in the db", () => {
+    assert.isFalse(
+      assertURLBelongsToUser("23564", "userRandomID", urlDatabase)
+    );
+  });
+});
+
+describe("#assertKey", () => {
+  it("returns true if the key is in the object", () => {
+    assert.isTrue(assertKey("b2xVn2", urlDatabase));
+  });
+  it("returns false if the key is not in the object", () => {
+    assert.isFalse(assertKey("myKey", urlDatabase));
   });
 });

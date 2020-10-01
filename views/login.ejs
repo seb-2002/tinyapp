@@ -59,6 +59,8 @@
       <p class="text-danger mt-2">
         That's not the password we've got on file for you!
       </p>
+      <% } else if (error) {%>
+      <p class="text-danger mt-2">Error: <%= error %></p>
       <% } else { %>
       <p class="mt-2">
         <a class="text-danger" href="/register">No account yet?</a>

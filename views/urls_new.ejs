@@ -36,6 +36,15 @@
           <button type="submit" class="btn btn-primary">Submit</button>
         </div>
       </form>
+      <% if (error) { %>
+      <p class="text-danger">
+        Error: <%= error %>
+        <span class="text-secondary font-weight-bold"
+          >Maybe create a new one?</span
+        >
+      </p>
+
+      <% } %>
     </main>
     <!-- Bootstrap JS -->
     <script

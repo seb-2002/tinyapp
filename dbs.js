@@ -10,7 +10,7 @@ const users = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: hash("purple-monkey-dinosaur"),
+    password: hash("pass"),
   },
   user2RandomID: {
     id: "user2RandomID",

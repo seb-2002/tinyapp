@@ -28,6 +28,8 @@ const {
   filterURLSByUserID,
   alertFalsePassword,
   hash,
+  assertURLBelongsToUser,
+  assertKey,
 } = require("./helpers");
 
 // DATABASES
@@ -45,15 +47,39 @@ app.listen(PORT, () => {
 // public
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  if (req.session["user_id"]) {
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
+// app.get("/u/:shortURL", (req, res) => {
+
+//   const longURL = urlDatabase[req.params.shortURL].longURL;
+//   if (longURL) {
+//     res.redirect(longURL);
+//   } else {
+//     req.session["error"] =
+//       "we couldn't find any website at that address. Login to create one!";
+//     res.redirect("/login");
+//   }
+// });
+
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  if (longURL) {
+  req.session["error"] = null;
+  const shortURL = req.params.shortURL;
+  console.log(`Query assertion: ${assertKey(shortURL, urlDatabase)}`);
+  if (assertKey(shortURL, urlDatabase)) {
+    const longURL = urlDatabase[shortURL].longURL;
     res.redirect(longURL);
+  } else if (req.session["user_id"]) {
+    req.session["error"] = "we couldn't find a matching URL.";
+    res.redirect("/urls/new");
   } else {
-    res.send("404 - page not found");
+    req.session["error"] =
+      "we couldn't find any website at that address. Login to create one!";
+    res.redirect("/login");
   }
 });
 
@@ -61,10 +87,15 @@ app.get("/u/:shortURL", (req, res) => {
 
 // deal with login and register buttons on the login page
 app.get("/login", (req, res) => {
+  if (req.session["user_id"]) {
+    req.session["error"] = null;
+    res.redirect("/urls");
+  }
   const templateVars = {
     user: users[req.session["user_id"]],
     invalidPassword: req.session["invalidPassword"],
     noEmailMatch: req.session["noEmailMatch"],
+    error: req.session["error"],
   };
   res.render("login", templateVars);
 });
@@ -77,15 +108,18 @@ app.post("/login", (req, res) => {
     res.status(403);
     req.session["noEmailMatch"] = true;
     req.session["invalidPassword"] = null;
+    req.session["error"] = null;
     res.redirect("/login");
     // and then ....
   } else if (alertFalsePassword(password, users[id].password)) {
     res.status(403);
+    req.session["error"] = null;
     req.session["noEmailMatch"] = null;
     req.session["invalidPassword"] = true;
     res.redirect("/login");
     // and then ....
   } else {
+    req.session["error"] = null;
     req.session["noEmailMatch"] = null;
     req.session["invalidPassword"] = null;
     req.session["user_id"] = id;
@@ -94,6 +128,10 @@ app.post("/login", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
+  console.log(req.session["user_id"]);
+  if (req.session["user_id"]) {
+    res.redirect("/urls");
+  }
   const templateVars = {
     user: users[req.session["user_id"]],
     badLogin: req.session["missingUsernameOrPassword"],
@@ -131,6 +169,7 @@ app.post("/register", (req, res) => {
 
 app.post("/logout", (req, res) => {
   req.session["user_id"] = null;
+  req.session["error"] = null;
   res.redirect("/login");
 });
 
@@ -139,28 +178,37 @@ app.post("/logout", (req, res) => {
 // add an if statement before the function to prevent error
 app.get("/urls", (req, res) => {
   const user = users[req.session["user_id"]];
-  if (!user) res.redirect("/login");
+  if (!user) {
+    req.session["error"] = "login to access URLs!";
+    res.redirect("/login");
+  }
   const urls = filterURLSByUserID(user.id, urlDatabase);
-  console.log(urls);
   const templateVars = {
     user,
     urls,
+    error: req.session["error"],
   };
   res.render("urls_index", templateVars);
 });
 
 app.post("/urls", (req, res) => {
-  const newShortURL = generateRandomString();
-  // pull the user object from cookies
-  const user = users[req.session["user_id"]];
-  // the longURL comes from the form on '/urls_new'
-  const longURL = req.body.longURL;
-  urlDatabase[newShortURL] = {
-    longURL,
-    userID: user.id,
-  };
-  const redirectPage = `/urls/${newShortURL}`;
-  res.redirect(redirectPage);
+  if (req.session["user_id"]) {
+    const newShortURL = generateRandomString();
+    // pull the user object from cookies
+    const user = users[req.session["user_id"]];
+    // the longURL comes from the form on '/urls_new'
+    const longURL = req.body.longURL;
+    urlDatabase[newShortURL] = {
+      longURL,
+      userID: user.id,
+    };
+    req.session["error"] = null;
+    const redirectPage = `/urls/${newShortURL}`;
+    res.redirect(redirectPage);
+  } else {
+    req.session["error"] = "Login to edit URLs!";
+    res.redirect("/login");
+  }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -171,9 +219,14 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const thisURL = req.params.shortURL;
   //only update the database if user.id === urlDatabase[thisURL].userID
   if (user && user.id === urlDatabase[thisURL].userID) {
+    req.session["error"] = null;
     delete urlDatabase[req.params.shortURL];
     res.redirect("/urls");
+  } else if (!user) {
+    req.session["error"] = "login to edit URLs!";
+    res.redirect("/login");
   } else {
+    req.session["error"] = "you can only edit your own URLS!";
     res.redirect("/login");
   }
 });
@@ -181,22 +234,44 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 // short URL pages
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.session["user_id"]] };
-  templateVars.user
-    ? res.render("urls_new", templateVars)
-    : res.redirect("/login");
+  const templateVars = {
+    user: users[req.session["user_id"]],
+    error: req.session["error"],
+  };
+  if (templateVars.user) {
+    req.session["error"] = null;
+    res.render("urls_new", templateVars);
+  } else {
+    req.session["error"] = "login to generate a new shortURL!";
+    res.redirect("/login");
+  }
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const thisURL = req.params.shortURL;
-  const templateVars = {
-    user: users[req.session["user_id"]],
-    shortURL: thisURL,
-    longURL: urlDatabase[thisURL].longURL,
-  };
-  templateVars.user
-    ? res.render("urls_show", templateVars)
-    : res.redirect("/login");
+  // if no-one is logged in, send the user to the login page
+  if (!req.session["user_id"]) {
+    req.session["error"] = "login to access URLs!";
+    res.redirect("/login");
+    // if the user is logged in but there's no urlDatabase entry for that :shortURL
+  } else if (!urlDatabase[thisURL]) {
+    req.session["error"] = "that shortURL doesn't exist yet!";
+    res.redirect("/urls/new");
+    // if that url DOES exist but does not belong to the user to modify
+  } else if (
+    !assertURLBelongsToUser(thisURL, req.session["user_id"], urlDatabase)
+  ) {
+    req.session["error"] = "You don't have permission to modify that shortURL!";
+    res.redirect("/urls");
+  } else {
+    req.session["error"] = null;
+    const templateVars = {
+      user: users[req.session["user_id"]],
+      shortURL: thisURL,
+      longURL: urlDatabase[thisURL].longURL,
+    };
+    res.render("urls_show", templateVars);
+  }
 });
 
 app.post("/urls/:id", (req, res) => {
@@ -209,7 +284,11 @@ app.post("/urls/:id", (req, res) => {
     // this request body comes from 'urls_show'
     urlDatabase[thisURL].longURL = req.body.newURL;
     res.redirect("/urls");
+  } else if (!user) {
+    req.session["error"] = "login to edit URLs!";
+    res.redirect("/login");
   } else {
+    req.session["error"] = "you can only edit your own URLS!";
     res.redirect("/login");
   }
 });

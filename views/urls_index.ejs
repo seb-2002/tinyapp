@@ -40,6 +40,10 @@
           <% } %>
         </tbody>
       </table>
+      <% if (error) { %>
+      <p class="text-danger">Error: <%= error %></p>
+        <% } %>
+
     </main>
     <!-- Bootstrap JS -->
     <script
