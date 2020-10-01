@@ -141,18 +141,17 @@ app.post("/logout", (req, res) => {
 
 // url index
 
+// add an if statement before the function to prevent error
 app.get("/urls", (req, res) => {
   const user = users[req.cookies["user_id"]];
-  console.log(user);
+  if (!user) res.redirect("/login");
   const urls = filterURLSByUserID(user.id, urlDatabase);
   console.log(urls);
   const templateVars = {
     user,
     urls,
   };
-  templateVars.user
-    ? res.render("urls_index", templateVars)
-    : res.redirect("/login");
+  res.render("urls_index", templateVars);
 });
 
 app.post("/urls", (req, res) => {
@@ -165,15 +164,23 @@ app.post("/urls", (req, res) => {
     longURL,
     userID: user.id,
   };
-  console.log(urlDatabase);
   const redirectPage = `/urls/${newShortURL}`;
   res.redirect(redirectPage);
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
   console.log("Delete request!");
-  delete urlDatabase[req.params.shortURL];
-  res.redirect("/urls");
+  // user is the user object logged in cookies
+  const user = users[req.cookies["user_id"]];
+  // thisURL is the shortURL present in the post request header
+  const thisURL = req.params.shortURL;
+  //only update the database if user.id === urlDatabase[thisURL].userID
+  if (user && user.id === urlDatabase[thisURL].userID) {
+    delete urlDatabase[req.params.shortURL];
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 // short URL pages
@@ -186,21 +193,30 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  const thisURL = req.params.shortURL;
   const templateVars = {
     user: users[req.cookies["user_id"]],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL].longURL,
+    shortURL: thisURL,
+    longURL: urlDatabase[thisURL].longURL,
   };
-  console.log(templateVars.longURL);
   templateVars.user
     ? res.render("urls_show", templateVars)
     : res.redirect("/login");
 });
 
 app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.newURL;
-  console.log("Database updated!");
-  res.redirect("/urls");
+  // user is the user object logged in cookies
+  const user = users[req.cookies["user_id"]];
+  // thisURL is the shortURL present in the post request header
+  const thisURL = req.params.id;
+  //only update the database if user.id === urlDatabase[thisURL].userID
+  if (user && user.id === urlDatabase[thisURL].userID) {
+    // this request body comes from 'urls_show'
+    urlDatabase[thisURL].longURL = req.body.newURL;
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 // dev exports
