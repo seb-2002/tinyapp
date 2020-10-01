@@ -1,4 +1,5 @@
 const { urlDatabase, users } = require("./express_server");
+const bcrypt = require("bcrypt");
 
 const duplicateEmail = (email, db) => {
   for (let user in db) {
@@ -31,6 +32,8 @@ const filterURLSByUserID = (userID, db) => {
   return filteredDatabase;
 };
 
+const hash = (password) => bcrypt.hashSync(password, 10);
+
 //console.log(filterURLSByUserID("userRandomID", urlDatabase));
 
 module.exports = {
@@ -39,4 +42,5 @@ module.exports = {
   emailArray,
   emailLookup,
   filterURLSByUserID,
+  hash,
 };

@@ -20,6 +20,7 @@ const {
   emailArray,
   emailLookup,
   filterURLSByUserID,
+  hash,
 } = require("./helpers");
 
 // "DATABASES"
@@ -108,6 +109,7 @@ app.get("/register", (req, res) => {
   res.render("register", templateVars);
 });
 
+// bug : if I try to login to an already existing account it says 'duplicate email' but doesn't send me to the login page
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
   const id = generateRandomString();
@@ -125,7 +127,7 @@ app.post("/register", (req, res) => {
     users[id] = {
       id,
       email,
-      password,
+      password: hash(password),
     };
     res.cookie("user_id", id);
     res.clearCookie("missingUsernameOrPassword");
