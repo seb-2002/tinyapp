@@ -6,10 +6,17 @@ const PORT = 8080; // default port 8080
 
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
+const cookieSession = require("cookie-session");
 
 // SETTINGS
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(
+  cookieSession({
+    name: "session",
+    keys: ["key1", "key2"], // replace with more secure keys
+  })
+);
 app.set("view engine", "ejs");
 
 // HELPER FUNCTIONS
@@ -34,12 +41,12 @@ const users = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur",
+    password: hash("purple-monkey-dinosaur"),
   },
   user2RandomID: {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: hash("dishwasher-funk"),
   },
 };
 
@@ -69,9 +76,9 @@ app.get("/u/:shortURL", (req, res) => {
 // deal with login and register buttons on the login page
 app.get("/login", (req, res) => {
   const templateVars = {
-    user: users[req.cookies["user_id"]],
-    invalidPassword: req.cookies["invalidPassword"],
-    noEmailMatch: req.cookies["noEmailMatch"],
+    user: users[req.session["user_id"]],
+    invalidPassword: req.session["invalidPassword"],
+    noEmailMatch: req.session["noEmailMatch"],
   };
   res.render("login", templateVars);
 });
@@ -82,33 +89,29 @@ app.post("/login", (req, res) => {
   console.log("id", id);
   if (!id) {
     res.status(403);
-    res.cookie("noEmailMatch", true);
-    res.clearCookie("invalidPassword");
-    console.log(res.statusCode);
+    req.session["noEmailMatch"] = true;
+    req.session["invalidPassword"] = null;
     res.redirect("/login");
     // and then ....
   } else if (alertFalsePassword(password, users[id].password)) {
     res.status(403);
-    console.log("password", password);
-    console.log("hash", users[id].password);
-    res.clearCookie("noEmailMatch");
-    res.cookie("invalidPassword", true);
-    console.log(res.statusCode);
+    req.session["noEmailMatch"] = null;
+    req.session["invalidPassword"] = true;
     res.redirect("/login");
     // and then ....
   } else {
-    res.clearCookie("noEmailMatch");
-    res.clearCookie("invalidPassword");
-    res.cookie("user_id", id);
+    req.session["noEmailMatch"] = null;
+    req.session["invalidPassword"] = null;
+    req.session["user_id"] = id;
     res.redirect("/urls");
   }
 });
 
 app.get("/register", (req, res) => {
   const templateVars = {
-    user: users[req.cookies["user_id"]],
-    badLogin: req.cookies["missingUsernameOrPassword"],
-    duplicateEmail: req.cookies["duplicateEmail"],
+    user: users[req.session["user_id"]],
+    badLogin: req.session["missingUsernameOrPassword"],
+    duplicateEmail: req.session["duplicateEmail"],
   };
   res.render("register", templateVars);
 });
@@ -119,13 +122,13 @@ app.post("/register", (req, res) => {
   const id = generateRandomString();
   if (duplicateEmail(email, users)) {
     res.status(400);
-    res.cookie("duplicateEmail", true);
-    res.clearCookie("missingUsernameOrPassword");
+    req.session["duplicateEmail"] = true;
+    req.session["missingUsernameOrPassword"] = null;
     res.redirect("/register");
   } else if (!password) {
     res.status(400);
-    res.clearCookie("duplicateEmail");
-    res.cookie("missingUsernameOrPassword", true);
+    req.session["duplicateEmail"] = null;
+    req.session["missingUsernameOrPassword"] = true;
     res.redirect("/register");
   } else {
     users[id] = {
@@ -133,16 +136,15 @@ app.post("/register", (req, res) => {
       email,
       password: hash(password),
     };
-    console.log(JSON.stringify(users[id]));
-    res.cookie("user_id", id);
-    res.clearCookie("missingUsernameOrPassword");
-    res.clearCookie("duplicateEmail");
+    req.session["user_id"] = id;
+    req.session["missingUsernameOrPassword"] = null;
+    req.session["duplicateEmail"] = null;
     res.redirect("/urls");
   }
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session["user_id"] = null;
   res.redirect("/login");
 });
 
@@ -150,7 +152,7 @@ app.post("/logout", (req, res) => {
 
 // add an if statement before the function to prevent error
 app.get("/urls", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   if (!user) res.redirect("/login");
   const urls = filterURLSByUserID(user.id, urlDatabase);
   console.log(urls);
@@ -164,7 +166,7 @@ app.get("/urls", (req, res) => {
 app.post("/urls", (req, res) => {
   const newShortURL = generateRandomString();
   // pull the user object from cookies
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   // the longURL comes from the form on '/urls_new'
   const longURL = req.body.longURL;
   urlDatabase[newShortURL] = {
@@ -178,7 +180,7 @@ app.post("/urls", (req, res) => {
 app.post("/urls/:shortURL/delete", (req, res) => {
   console.log("Delete request!");
   // user is the user object logged in cookies
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   // thisURL is the shortURL present in the post request header
   const thisURL = req.params.shortURL;
   //only update the database if user.id === urlDatabase[thisURL].userID
@@ -193,7 +195,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 // short URL pages
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]] };
+  const templateVars = { user: users[req.session["user_id"]] };
   templateVars.user
     ? res.render("urls_new", templateVars)
     : res.redirect("/login");
@@ -202,7 +204,7 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const thisURL = req.params.shortURL;
   const templateVars = {
-    user: users[req.cookies["user_id"]],
+    user: users[req.session["user_id"]],
     shortURL: thisURL,
     longURL: urlDatabase[thisURL].longURL,
   };
@@ -213,7 +215,7 @@ app.get("/urls/:shortURL", (req, res) => {
 
 app.post("/urls/:id", (req, res) => {
   // user is the user object logged in cookies
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   // thisURL is the shortURL present in the post request header
   const thisURL = req.params.id;
   //only update the database if user.id === urlDatabase[thisURL].userID
