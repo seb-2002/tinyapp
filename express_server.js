@@ -69,7 +69,6 @@ app.get("/", (req, res) => {
 app.get("/u/:shortURL", (req, res) => {
   req.session["error"] = null;
   const shortURL = req.params.shortURL;
-  console.log(`Query assertion: ${assertKey(shortURL, urlDatabase)}`);
   if (assertKey(shortURL, urlDatabase)) {
     const longURL = urlDatabase[shortURL].longURL;
     res.redirect(longURL);
@@ -103,7 +102,6 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const id = emailLookup(email, users);
-  console.log("id", id);
   if (!id) {
     res.status(403);
     req.session["noEmailMatch"] = true;
@@ -128,7 +126,6 @@ app.post("/login", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  console.log(req.session["user_id"]);
   if (req.session["user_id"]) {
     res.redirect("/urls");
   }
@@ -212,7 +209,6 @@ app.post("/urls", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  console.log("Delete request!");
   // user is the user object logged in cookies
   const user = users[req.session["user_id"]];
   // thisURL is the shortURL present in the post request header
